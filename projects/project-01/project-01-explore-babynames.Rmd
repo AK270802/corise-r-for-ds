@@ -48,11 +48,12 @@ library(tidyverse)
 # Read the csv file `file_name_names` as data frame `tbl_names`
 file_name_names <- here::here("data/names.csv.gz")
 tbl_names <- readr::read_csv(
-  file = ___, 
+  file = file_name_names, 
   show_col_types = FALSE
 )
 
 # Print `tbl_names`
+tbl_names
 
 ```
 
@@ -70,18 +71,18 @@ The first step is always to transform the data into a form that is easy to visua
 ```{r question-1-transform}
 tbl_names_popular = tbl_names |> 
   # Keep ROWS for year > 2010 and <= 2020
-  filter(year > ___, ___ <= ___) |> 
+  filter(year > 2010, year <= 2020) |> 
   # Group by sex and name
-  group_by(___, ___) |> 
+  group_by(sex, name) |> 
   # Summarize the number of births
   summarize(
-    nb_births = ___(nb_births),
+    nb_births = sum(nb_births),
     .groups = "drop"
   ) |> 
   # Group by sex 
-  ___(___) |>  
+  group_by(sex) |>  
   # For each sex, keep the top 5 rows by number of births
-  slice_max(___, n = ___)
+  slice_max(nb_births, n = 5)
 
 tbl_names_popular
 ```
@@ -97,18 +98,18 @@ tbl_names_popular |>
   # Reorder the names by number of births
   mutate(name = fct_reorder(name, nb_births)) |>
   # Initialize a ggplot for name vs. nb_births
-  ggplot(aes(x = ___, y = ___)) +
+  ggplot(aes(y = name, x = nb_births)) +
   # Add a column plot layer
   geom_col() +
   # Facet the plots by sex
-  facet_wrap(~ ___, scales = "free_y") +
+  facet_wrap(~ sex, scales = "free_y") +
   # Add labels (title, subtitle, caption, x, y)
   labs(
-    title = '___',
-    subtitle = '___',
-    caption = '___',
-    x = '___',
-    y = '___'
+    title = 'Number of babies per name',
+    subtitle = 'Last decade, 2011-2020',
+    caption = 'dont read this',
+    y = 'Name',
+    x = 'Number of Babies'
   ) +
   # Fix the x-axis scale 
   scale_x_continuous(
@@ -140,21 +141,21 @@ We need to transform the data into a table that consists of the columns `sex`, `
 ```{r question-2-transform}
 tbl_names_popular_trendy = tbl_names |> 
   # Group by sex and name
-  ___(___, ___) |> 
+  group_by(sex, name) |> 
   # Summarize total number of births and max births in a year
   summarize(
-    nb_births_total = ___(___),
-    nb_births_max = ___(___),
+    nb_births_total = sum(nb_births),
+    nb_births_max = max(nb_births),
     .groups = "drop"
   ) |> 
   # Filter for names with at least 10000 births
-  ___(___ > ___) |> 
+  filter(nb_births_total > 10000) |> 
   # Add a column for trendiness computed as ratio of max to total
-  ___(___ = ___ / ___) |> 
+  mutate(trend = nb_births_max / nb_births_total) |> 
   # Group by sex
-  ___(___) |> 
+  group_by(sex) |> 
   # Slice top 5 rows by trendiness for each group
-  ___(___, n = ___)
+  slice_max(trend, n = 5)
 
 tbl_names_popular_trendy
 ```
@@ -173,16 +174,16 @@ Let us write a function that will accept a name as an argument and return a plot
 plot_trends_in_name <- function(my_name) {
   tbl_names |> 
     # Filter for name = my_name
-    ___(___ == my_name) |> 
+    filter(name == my_name) |> 
     # Initialize a ggplot of `nb_births` vs. `year` colored by `sex`
-    ___(___(x = ___, y = ___, color = ___)) +
+    ggplot(aes(x = year, y = nb_births, color = sex)) +
     # Add a line layer
-    ___() +
+    geom_line() +
     # Add labels (title, x, y)
     labs(
       title = glue::glue("Babies named {my_name} across the years!"),
-      x = '___',
-      y = '___'
+      x = 'Year',
+      y = 'Number of babies'
     ) +
     # Update plot theme
     theme(plot.title.position = "plot")
@@ -211,9 +212,9 @@ tbl_names = tbl_names |>
   # Add NEW column first_letter by extracting `first_letter` from name using `str_sub`
   mutate(first_letter = str_sub(name, 1, 1)) |>  
   # Add NEW column last_letter by extracting `last_letter` from name using `str_sub`
-  ___(last_letter = ___(name, -1, -1)) |> 
+  mutate(last_letter = str_sub(name, -1, -1)) |> 
   # UPDATE column `last_letter` to upper case using `str_to_upper`
-  ___(last_letter = ___(___))
+  mutate(last_letter = str_to_upper(last_letter))
 
 tbl_names
 ```
@@ -239,62 +240,53 @@ tbl_names_by_letter
 Visualize the distribution of births by first letter for the year 2020, faceted by sex.
 
 ```{r question-3-visualize-1}
-tbl_names_by_letter |> 
-  # Filter for the year 2020
-   
-  # Initialize a ggplot of pct_births vs. first_letter
-  
-  # Add a column layer using `geom_col()`
-  
-  # Facet wrap plot by sex
-  
-  # Add labels (title, subtitle, x, y)
-  
-  
+tbl_names_2020 <- tbl_names %>%
+  filter(year == 2020)
 
-
-
-
-  
-  # Fix scales of y axis
-  scale_y_continuous(
-    expand = c(0, 0),
-    labels = scales::percent_format(accuracy = 1L)
+ggplot(tbl_names_2020, aes(x = first_letter, y = nb_births)) +
+  geom_col() +
+  facet_wrap(~ sex, scales = "free_x") +
+  labs(
+    title = "Distribution of births by first letter for the year 2020, faceted by sex",
+    x = "First Letter",
+    y = "Number of Births"
   ) +
-  # Update plotting theme
-  theme(
-    plot.title.position = "plot",
-    axis.ticks.x = element_blank(),
-    panel.grid.major.x = element_blank()
-  )
+  theme(plot.title = element_text(hjust = 0.5))
+
 ```
 
 Write a function that plot trends in the percentage of births for all names starting with a specific first letter.
 
 ```{r question-3-visualize-2}
-plot_trends_in_letter <- function(my_letter) {
-  tbl_names_by_letter |> 
-    # Filter for first_letter = my_letter
-    filter(first_letter == my_letter) |> 
-    # Initialize a ggplot of pct_births vs. year colored by sex
-    
-    # Add a line layer
-    
-    # Add labels (title, subtitle, caption, x, y)
+plot_trends_in_first_letter <- function(my_letter) {
+  tbl_names_by_year_first_letter <- tbl_names |> 
+    # Filter for names starting with `my_letter`
+    filter(str_sub(name, 1, 1) == my_letter) |> 
+    # Group by year and sex
+    group_by(year, sex) |> 
+    # Summarize total births in the year by sex
+    summarize(total_births = sum(nb_births)) |> 
+    # Add NEW column `perc_births` for the percentage of total births by sex
+    mutate(perc_births = total_births / sum(total_births)) |> 
+    # Convert year to a factor for plotting
+    mutate(year = factor(year)) |> 
+    # Sort by year
+    arrange(year)
+  
+  ggplot(tbl_names_by_year_first_letter, aes(x = year, y = perc_births, fill = sex)) +
+    geom_bar(stat = "identity", position = "stack") +
     labs(
-      title = glue::glue("Trends in Names beginning with {my_letter}"),
-      subtitle = "___",
-      caption = "___",
-      x = "___",
-      y = '___'
+      title = glue::glue("Trends in births for names starting with {my_letter}"),
+      x = "Year",
+      y = "Percentage of total births",
+      fill = "Sex"
     ) +
-    # Update y-axis scales to display percentages
     scale_y_continuous(labels = scales::percent_format()) +
-    # Update theme
-    theme(plot.title.position = "plot")
+    facet_wrap(~ sex, scales = "free_y") +
+    theme(plot.title = element_text(hjust = 0.5))
 }
 
-plot_trends_in_letter("S")
+plot_trends_in_first_letter("B")
 ```
 
 ----
@@ -313,22 +305,22 @@ Are you ready to explore the fascinating realm of letter combinations in names? 
 
 
 ```{r question-4-transform}
+library(tidyverse)
+
 tbl_names_by_first_and_last_letter = tbl_names |> 
   # Filter for sex = "F"
-  
+  filter(sex == "F") |> 
   # Group by `first_letter`, `last_letter`, and `year`
-  
+  group_by(first_letter, last_letter, year) |> 
   # Summarize total number of births
-  
-  
-  
+  summarize(nb_births = sum(nb_births), .groups = "drop") |>
   
   # Group by `year`
-  
+  group_by(year) |> 
   # Add NEW column pct_births by dividing nb_births by sum(nb_births)
-
+  mutate(pct_births = nb_births / sum(nb_births)) |>
   # Ungroup data
-
+  ungroup()
 
 tbl_names_by_first_and_last_letter
 ```
@@ -341,27 +333,30 @@ Now, you will visualize the distribution of `pct_births` by `last_letter` and `f
 ```{r question-4-visualize}
 tbl_names_by_first_and_last_letter |> 
   # Filter for the year 2021
-  
+  filter(year == 2021) |> 
   # Initialize a ggplot of last_letter vs. first_letter
-  
+  ggplot(aes(x = last_letter, y = first_letter)) +
   # Add a `geom_tile` layer with fill mapped to pct_births
-  
+  geom_tile(aes(fill = pct_births)) +
   # Add labels (title, subtitle, x, y, fill)
- 
-  
-  
-  
-
-
-
-  # Update fill scale to use Viridis colors
-  scale_fill_viridis_b(direction = -1) +
+  labs(
+    title = "Distribution of Births by First and Last Letters, 2021",
+    subtitle = "Percentage of Births by First and Last Letter Combination",
+    x = "Last Letter",
+    y = "First Letter",
+    fill = "Percentage of Births"
+  ) +
+  # Define custom color palette
+  scale_fill_gradientn(colors = c("#ffffcc", "#a1dab4", "#41b6c4", "#225ea8", "#253494"),
+                       na.value = "white") +
   # Update plotting theme
   theme(
     plot.title.position = "plot",
     panel.grid = element_blank(),
     axis.ticks = element_blank()
   )
+
+
 ```
 
 ### Question 5: [Vowels vs Consonants] Are there naming trends in usage of vowels and consonants?
@@ -382,24 +377,21 @@ get_letter_type <- function(letter) {
 
 tbl_names_vowel_consonant <- tbl_names |> 
   # Add NEW column named `first_letter_type`
-  
+  mutate(first_letter_type = get_letter_type(first_letter)) |>
   # Add NEW column named `last_letter_type`
-  
+  mutate(last_letter_type = get_letter_type(last_letter)) |>
   # Group by `sex`, `year`, `first_letter_type` and `last_letter_type`
-  
+  group_by(sex, year, first_letter_type, last_letter_type) |> 
   # Summarize the total number of births
-  
-  
-  
-  
+  summarize(nb_births = sum(nb_births), .groups = "drop") |>
   # Group by `sex` and` `year`
-  
+  group_by(sex, year) |> 
   # Add NEW column with `pct_births` calculated as `nb_births / sum(nb_births)`
-   
+  mutate(pct_births = nb_births / sum(nb_births)) |>
   # Ungroup the data
-  
+  ungroup() |>
   # Unite `first_letter_type` and `last_letter_type` into a NEW column named `first_last`
- 
+  unite(first_last, first_letter_type, last_letter_type, sep="_")
 
 tbl_names_vowel_consonant
 ```
@@ -413,20 +405,18 @@ tbl_names_vowel_consonant |>
   # Reorder `first_last` by the median `pct_births`
   mutate(first_last = fct_reorder(first_last, pct_births, median)) |>
   # Initialize a ggplot of `pct_births` vs. `year`
-  
+  ggplot(aes(x = year, y = pct_births, fill = first_last)) +
   # Add an area layer with fill = first_last
-  
+  geom_area(alpha = 0.8) +
   # Facet wrap plot by `sex`
-  
+  facet_wrap(~ sex, scales = "free_y") +
   # Add labels (title, subtitle, caption, x, y)
-  
-  
-  
-  
-
-
-
-
+  labs(
+    title = "Trends in the usage of vowels and consonants in names over time",
+    subtitle = "Percentage of births by the combination of first and last letter types, by sex",
+    x = "Year",
+    y = "Percentage of births"
+  ) +
   # Clean up x and y axis scales
   scale_x_continuous(
     expand = c(0, 0)
@@ -442,6 +432,7 @@ tbl_names_vowel_consonant |>
     plot.title.position = 'plot',
     legend.position = 'bottom'
   )
+
 ```
 
 
